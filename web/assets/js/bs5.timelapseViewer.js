@@ -91,7 +91,7 @@ $(document).ready(function(e){
                 currentPlaylistArray = []
                 $.each(data.reverse(),function(n,fileInfo){
                     fileInfo.number = n
-                    frameIconsHtml += '<div class="col-md-4 frame-container" frame-container="' + fileInfo.filename + '"><div class="frame" data-filename="' + fileInfo.filename + '" frame-container-unloaded="' + fileInfo.href + '"><div class="button-strip"><input name="' + fileInfo.href + '" value="' + fileInfo.filename + '" type="checkbox" class="form-check-input"><button type="button" class="btn btn-sm btn-danger delete"><i class="fa fa-trash-o"></i></button></div><div class="shade">' + moment(fileInfo.time).format('YYYY-MM-DD HH:mm:ss') + '</div></div></div>'
+                    frameIconsHtml += '<div class="col-md-4 frame-container" frame-href="'+ fileInfo.href +'" frame-container="' + fileInfo.filename + '"><div class="frame" data-filename="' + fileInfo.filename + '" frame-container-unloaded="' + fileInfo.href + '"><div class="button-strip"><input name="' + fileInfo.href + '" value="' + fileInfo.filename + '" type="checkbox" class="form-check-input"><button type="button" class="btn btn-sm btn-danger delete"><i class="fa fa-trash-o"></i></button></div><div class="shade">' + moment(fileInfo.time).format('YYYY-MM-DD HH:mm:ss') + '</div></div></div>'
                     currentPlaylist[fileInfo.filename] = fileInfo
                 })
                 currentPlaylistArray = data
@@ -181,11 +181,15 @@ $(document).ready(function(e){
             })
         })
     }
-    async function deleteFrames(frameHrefs){
+    async function deleteFrames(frameHrefs, perCallback){
+        const responses = []
         for (let i = 0; i < frameHrefs.length; i++) {
             const frameHref = frameHrefs[i]
-            await deleteFrame(frameHref)
+            const perResponse = await deleteFrame(frameHref)
+            perResponse.href = frameHref
+            responses.push(perResponse)
         }
+        return responses
     }
     function deleteSelectedFrames(){
         var checkedBoxes = frameIcons.serializeObject()
@@ -198,11 +202,13 @@ $(document).ready(function(e){
                 class: 'btn-danger',
                 title: lang.Delete,
             },
-            clickCallback: function(){
-                deleteFrames(frameHrefs)
-                fileNames.forEach((filename) => {
-                    frameIcons.find(`[frame-container="${filename}"]`).remove()
-                })
+            clickCallback: async function(){
+                const responses = await deleteFrames(frameHrefs)
+                for(perResponse of responses){
+                    if(perResponse.ok){
+                        frameIcons.find(`[frame-href="${perResponse.href}"]`).remove()
+                    }
+                }
             }
         })
     }
@@ -255,7 +261,7 @@ $(document).ready(function(e){
     })
     .on('click','.zip-selected-frames',function(e){
         e.preventDefault()
-        var frames = getSelectedRows(true)
+        var frames = getSelectedRows()
         zipVideosAndDownloadWithConfirm(frames)
         return false;
     })
@@ -276,13 +282,20 @@ $(document).ready(function(e){
         var endDate = dateRange.endDate
         var selectedMonitor = monitorsList.val()
         window.askedForTimelapseVideoBuild = true
-        var parsedFrames = currentPlaylistArray.map(function(frame){
+        var parsedFrames = getSelectedRows().map(function(frame){
             return {
                 mid: frame.mid,
                 ke: frame.ke,
                 filename: frame.filename,
             }
         });
+        if(parsedFrames.length === 0){
+            return new PNotify({
+                title: lang['Invalid Data'],
+                text: lang.notEnoughFramesText1,
+                type: 'danger'
+            })
+        };
         mainSocket.f({
             f: 'timelapseVideoBuild',
             mid: selectedMonitor,
@@ -326,7 +339,7 @@ $(document).ready(function(e){
         }else if(tabTree.name !== 'timelapseViewer'){
             new PNotify({
                 title: lang['Timelapse Video Build Complete'],
-                text: `${lang['File Download Ready']}.<br><br><a class="btn btn-sm btn-success" href="${buildFileBinUrl(data)}">${lang.Download}</a>`,
+                text: `${lang['File Download Ready']}.<br><br><a class="btn btn-sm btn-success download-file" href="${buildFileBinUrl(data)}">${lang.Download}</a>`,
                 type: 'success',
             })
         }
@@ -345,7 +358,7 @@ $(document).ready(function(e){
                     </div>
                 </div>
                 <div style="display:none;" class="download-button pr-2">
-                    <a class="badge badge-sm badge-success" download href="${fileBinUrl}"><i class="fa fa-download"></i></a>
+                    <a class="badge badge-sm badge-success download-file" href="${fileBinUrl}"><i class="fa fa-download"></i></a>
                 </div>
                 <div style="display:none;" class="download-button pr-2">
                     <a class="badge badge-sm badge-primary open-fileBin-video" href="${fileBinUrl}"><i class="fa fa-play"></i></a>
