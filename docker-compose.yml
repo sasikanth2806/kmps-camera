@@ -1,0 +1,63 @@
+services:
+  # ==================
+  # Shinobi Application
+  # ==================
+  shinobi:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: shinobi-dev
+    restart: unless-stopped
+    network_mode: host
+    shm_size: '512m'
+    devices:
+     - "/dev/video0:/dev/video0" # laptop webcam     
+    volumes:
+      - ./libs:/opt/shinobi/libs
+      - ./web:/opt/shinobi/web
+      - ./camera.js:/opt/shinobi/camera.js
+      - ./conf.json:/opt/shinobi/conf.json
+      - ./super.json:/opt/shinobi/super.json
+      - ./videos:/opt/shinobi/videos
+      - ./logs:/opt/shinobi/logs
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=127.0.0.1
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ==================
+  # CodeProject AI
+  # ==================
+  codeprojectai:
+    image: codeproject/ai-server:latest
+    container_name: codeproject-ai
+    ports:
+      - "32168:32168"
+    volumes:
+      - ./codeproject-ai:/etc/codeproject/ai
+    restart: unless-stopped
+
+  # ==================
+  # MariaDB Database
+  # ==================
+  db:
+    image: mariadb:10.6
+    container_name: shinobi-dev-db
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=ccio
+      - MYSQL_USER=shinobi
+      - MYSQL_PASSWORD=[REDACTED:PASSWORD]
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./docker-init/user.sql:/docker-entrypoint-initdb.d/01-user.sql
+      - ./docker-init/framework.sql:/docker-entrypoint-initdb.d/02-framework.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
