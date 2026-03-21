@@ -10,8 +10,8 @@ services:
     restart: unless-stopped
     network_mode: host
     shm_size: '512m'
-    devices:
-     - "/dev/video0:/dev/video0" # laptop webcam     
+      #devices:
+      #- "/dev/video0:/dev/video0" # laptop webcam     
     volumes:
       - ./libs:/opt/shinobi/libs
       - ./web:/opt/shinobi/web
