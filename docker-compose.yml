@@ -22,7 +22,7 @@ services:
       - ./logs:/opt/shinobi/logs
     environment:
       - NODE_ENV=development
-      - DB_HOST=127.0.0.1
+      - DB_HOST=db
     depends_on:
       db:
         condition: service_healthy
@@ -37,6 +37,9 @@ services:
       - "32168:32168"
     volumes:
       - ./codeproject-ai:/etc/codeproject/ai
+    environment:
+     - CP_CPU_COUNT=3
+     - CP_ENABLE_GPU=false
     restart: unless-stopped
 
   # ==================
@@ -46,7 +49,9 @@ services:
     image: mariadb:10.6
     container_name: shinobi-dev-db
     restart: unless-stopped
-    network_mode: host
+    #network_mode: host
+    ports:
+      - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=rootpassword
       - MYSQL_DATABASE=ccio
